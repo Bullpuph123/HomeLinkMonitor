@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet --version:*)",
+      "Bash(dotnet --list-sdks:*)",
+      "Bash(code:*)",
+      "Bash(dir:*)",
+      "Bash(cmd.exe /c \"dir \"\"C:\\\\Program Files\\\\dotnet\\\\sdk\"\" 2>&1\")",
+      "Bash(cmd.exe /c \"dotnet --list-sdks 2>&1 && dotnet --list-runtimes 2>&1\")",
+      "Bash(cmd.exe /c \"dotnet --info 2>&1\")",
+      "Bash(powershell -Command \"dotnet --info\")",
+      "Bash(powershell -Command \"& ''C:\\\\Program Files\\\\dotnet\\\\dotnet.exe'' --info\")",
+      "Bash(\"C:/Program Files/dotnet/dotnet.exe\" --info)",
+      "WebSearch",
+      "Bash(winget install:*)",
+      "Bash(export PATH=\"/c/Program Files/dotnet:$PATH\")",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet nuget list source:*)",
+      "Bash(dotnet nuget add source:*)",
+      "Bash(python3:*)",
+      "Bash(dotnet build:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
