@@ -1,13 +1,228 @@
-﻿using System.Configuration;
-using System.Data;
+using System.IO;
+using System.Net.Http;
 using System.Windows;
+using Application = System.Windows.Application;
+using CommunityToolkit.Mvvm.Messaging;
+using HomeLinkMonitor.Data;
+using HomeLinkMonitor.Models;
+using HomeLinkMonitor.Services;
+using HomeLinkMonitor.ViewModels;
+using HomeLinkMonitor.Views;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace HomeLinkMonitor;
 
-/// <summary>
-/// Interaction logic for App.xaml
-/// </summary>
-public partial class App : Application
+public partial class App : Application, IRecipient<SwitchWindowModeMessage>
 {
-}
+    private IHost? _host;
+    private MainWindow? _mainWindow;
+    private MiniWindow? _miniWindow;
+    private H.NotifyIcon.TaskbarIcon? _trayIcon;
+    private AppConfig _config = new();
 
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        // Prevent auto-shutdown so tray can keep app alive
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+        _config = AppConfig.Load();
+
+        _host = Host.CreateDefaultBuilder()
+            .ConfigureLogging(logging =>
+            {
+                logging.SetMinimumLevel(LogLevel.Information);
+                logging.AddDebug();
+            })
+            .ConfigureServices(services =>
+            {
+                // Config
+                services.AddSingleton(_config);
+
+                // Messenger
+                services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
+
+                // Database
+                var appData = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "HomeLinkMonitor");
+                Directory.CreateDirectory(appData);
+                var dbPath = Path.Combine(appData, "homelink.db");
+
+                services.AddDbContextFactory<AppDbContext>(options =>
+                    options.UseSqlite($"Data Source={dbPath}"));
+
+                services.AddSingleton<DataRepository>();
+
+                // Services
+                services.AddSingleton<IWifiMetricsProvider, WifiMetricsProvider>();
+                services.AddSingleton<INetworkInterfaceProvider, NetworkInterfaceProvider>();
+                services.AddSingleton<IPingProbe, PingProbe>();
+                services.AddSingleton<IDnsProbe, DnsProbe>();
+                services.AddSingleton<IHttpProbe, HttpProbe>();
+                services.AddSingleton<HttpClient>();
+                services.AddSingleton<IAlertEngine, AlertEngine>();
+                services.AddSingleton<IRoamingDetector, RoamingDetector>();
+                services.AddSingleton<ITracerouteService, TracerouteService>();
+                services.AddSingleton<IExportService, ExportService>();
+                services.AddSingleton<INotificationService, NotificationService>();
+
+                // Background services
+                services.AddHostedService<MonitoringOrchestrator>();
+                services.AddHostedService<DataRetentionService>();
+
+                // ViewModels
+                services.AddSingleton<MainViewModel>();
+                services.AddSingleton<MiniViewModel>();
+                services.AddSingleton<TrayViewModel>();
+                services.AddTransient<SettingsViewModel>();
+
+                // Windows
+                services.AddTransient<MainWindow>();
+                services.AddTransient<MiniWindow>();
+                services.AddTransient<SettingsWindow>();
+            })
+            .Build();
+
+        // Ensure database is created with WAL mode
+        using (var scope = _host.Services.CreateScope())
+        {
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+            await using var db = await contextFactory.CreateDbContextAsync();
+            await db.Database.EnsureCreatedAsync();
+            await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+        }
+
+        // Register for window mode switch messages
+        WeakReferenceMessenger.Default.Register(this);
+
+        // Create tray icon
+        SetupTrayIcon();
+
+        // Start the host (background services)
+        await _host.StartAsync();
+
+        // Show main window
+        ShowMainWindow();
+    }
+
+    private void SetupTrayIcon()
+    {
+        _trayIcon = new H.NotifyIcon.TaskbarIcon
+        {
+            ToolTipText = "HomeLink Monitor",
+            ContextMenu = CreateTrayContextMenu()
+        };
+
+        _trayIcon.TrayMouseDoubleClick += (_, _) => ShowMainWindow();
+
+        // Create a simple icon programmatically
+        _trayIcon.Icon = CreateTrayIconFromDrawing();
+    }
+
+    private static System.Drawing.Icon CreateTrayIconFromDrawing()
+    {
+        using var bmp = new System.Drawing.Bitmap(16, 16);
+        using var g = System.Drawing.Graphics.FromImage(bmp);
+        g.Clear(System.Drawing.Color.Transparent);
+
+        // Draw a simple Wi-Fi-like icon (green circle with signal arcs)
+        using var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(0x66, 0xBB, 0x6A));
+        g.FillEllipse(brush, 2, 2, 12, 12);
+
+        using var pen = new System.Drawing.Pen(System.Drawing.Color.White, 1);
+        g.DrawArc(pen, 4, 4, 8, 8, 220, 100);
+        g.DrawArc(pen, 5, 6, 6, 5, 220, 100);
+
+        var handle = bmp.GetHicon();
+        return System.Drawing.Icon.FromHandle(handle);
+    }
+
+    private System.Windows.Controls.ContextMenu CreateTrayContextMenu()
+    {
+        var menu = new System.Windows.Controls.ContextMenu();
+
+        var showMain = new System.Windows.Controls.MenuItem { Header = "Show Dashboard" };
+        showMain.Click += (_, _) => ShowMainWindow();
+        menu.Items.Add(showMain);
+
+        var showMini = new System.Windows.Controls.MenuItem { Header = "Mini Mode" };
+        showMini.Click += (_, _) => ShowMiniWindow();
+        menu.Items.Add(showMini);
+
+        menu.Items.Add(new System.Windows.Controls.Separator());
+
+        var exit = new System.Windows.Controls.MenuItem { Header = "Exit" };
+        exit.Click += (_, _) => Shutdown();
+        menu.Items.Add(exit);
+
+        return menu;
+    }
+
+    private void ShowMainWindow()
+    {
+        _miniWindow?.Hide();
+
+        if (_mainWindow == null || !_mainWindow.IsLoaded)
+        {
+            _mainWindow = _host!.Services.GetRequiredService<MainWindow>();
+            _mainWindow.Closing += MainWindow_Closing;
+        }
+
+        _mainWindow.Show();
+        _mainWindow.Activate();
+        if (_mainWindow.WindowState == WindowState.Minimized)
+            _mainWindow.WindowState = WindowState.Normal;
+    }
+
+    private void ShowMiniWindow()
+    {
+        _mainWindow?.Hide();
+
+        if (_miniWindow == null || !_miniWindow.IsLoaded)
+        {
+            _miniWindow = _host!.Services.GetRequiredService<MiniWindow>();
+        }
+
+        _miniWindow.Show();
+        _miniWindow.Activate();
+    }
+
+    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_config.MinimizeToTray)
+        {
+            e.Cancel = true;
+            _mainWindow?.Hide();
+        }
+    }
+
+    public void Receive(SwitchWindowModeMessage message)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (message.Value)
+                ShowMiniWindow();
+            else
+                ShowMainWindow();
+        });
+    }
+
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        _config.Save();
+
+        _trayIcon?.Dispose();
+
+        if (_host != null)
+        {
+            await _host.StopAsync(TimeSpan.FromSeconds(5));
+            _host.Dispose();
+        }
+        base.OnExit(e);
+    }
+}
