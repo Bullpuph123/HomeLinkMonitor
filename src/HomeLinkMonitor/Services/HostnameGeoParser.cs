@@ -192,7 +192,7 @@ public static class HostnameGeoParser
             ("gardengrove", "ca", "Garden Grove", 33.774, -117.941),
             ("gilroy", "ca", "Gilroy", 37.006, -121.568),
             ("glendale", "ca", "Glendale", 34.142, -118.255),
-            ("greatolks", "ca", "Great Oaks", 37.238, -121.778),
+            ("greakoaks", "ca", "Great Oaks", 37.238, -121.778),
             ("greatoaks", "ca", "Great Oaks", 37.238, -121.778),
             ("hayward", "ca", "Hayward", 37.669, -122.081),
             ("hemet", "ca", "Hemet", 33.748, -116.972),
