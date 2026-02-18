@@ -3,11 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:HomeLinkMonitor.Converters"
         Title="HomeLink Mini"
-        Width="280" Height="100"
+        Width="300" Height="110"
+        WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
         Topmost="True"
-        ShowInTaskbar="False"
+        ShowInTaskbar="True"
         ResizeMode="NoResize"
         Background="Transparent"
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
@@ -19,8 +20,8 @@
         <conv:ConnectionStatusToColorConverter x:Key="StatusToColor" />
     </Window.Resources>
 
-    <Border Background="#E6191930" CornerRadius="10" Padding="12,8"
-            BorderBrush="#40808080" BorderThickness="1">
+    <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="12,8"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1.5" Opacity="0.95">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -32,9 +33,9 @@
                 <Ellipse Width="8" Height="8"
                          Fill="{Binding OverallStatus, Converter={StaticResource StatusToColor}}"
                          Margin="0,0,6,0" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding Ssid}" Foreground="#E0E0E0" FontSize="13" FontWeight="SemiBold"
+                <TextBlock Text="{Binding Ssid}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" FontWeight="SemiBold"
                            VerticalAlignment="Center" />
-                <TextBlock Text="{Binding StatusText}" Foreground="#A0A0B0" FontSize="11"
+                <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"
                            Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
 
@@ -48,28 +49,28 @@
 
                 <!-- Signal -->
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="SIGNAL" Foreground="#707080" FontSize="9" />
+                    <TextBlock Text="SIGNAL" Foreground="{DynamicResource TextMutedBrush}" FontSize="9" />
                     <TextBlock FontSize="16" FontWeight="Medium"
                                Foreground="{Binding SignalQuality, Converter={StaticResource SignalToColor}}">
-                        <Run Text="{Binding SignalQuality, Mode=OneWay}" /><Run Text="%" Foreground="#707080" FontSize="10" />
+                        <Run Text="{Binding SignalQuality, Mode=OneWay}" /><Run Text="%" Foreground="{DynamicResource TextMutedBrush}" FontSize="10" />
                     </TextBlock>
                 </StackPanel>
 
                 <!-- Gateway -->
                 <StackPanel Grid.Column="1">
-                    <TextBlock Text="GATEWAY" Foreground="#707080" FontSize="9" />
+                    <TextBlock Text="GATEWAY" Foreground="{DynamicResource TextMutedBrush}" FontSize="9" />
                     <TextBlock FontSize="16" FontWeight="Medium"
                                Foreground="{Binding GatewayLatency, Converter={StaticResource LatencyToColor}}">
-                        <Run Text="{Binding GatewayLatency, StringFormat={}{0:F0}, Mode=OneWay}" /><Run Text="ms" Foreground="#707080" FontSize="10" />
+                        <Run Text="{Binding GatewayLatency, StringFormat={}{0:F0}, Mode=OneWay}" /><Run Text="ms" Foreground="{DynamicResource TextMutedBrush}" FontSize="10" />
                     </TextBlock>
                 </StackPanel>
 
                 <!-- DNS -->
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="DNS" Foreground="#707080" FontSize="9" />
+                    <TextBlock Text="DNS" Foreground="{DynamicResource TextMutedBrush}" FontSize="9" />
                     <TextBlock FontSize="16" FontWeight="Medium"
                                Foreground="{Binding DnsLatency, Converter={StaticResource LatencyToColor}}">
-                        <Run Text="{Binding DnsLatency, StringFormat={}{0:F0}, Mode=OneWay}" /><Run Text="ms" Foreground="#707080" FontSize="10" />
+                        <Run Text="{Binding DnsLatency, StringFormat={}{0:F0}, Mode=OneWay}" /><Run Text="ms" Foreground="{DynamicResource TextMutedBrush}" FontSize="10" />
                     </TextBlock>
                 </StackPanel>
             </Grid>

@@ -97,8 +97,17 @@ public partial class App : Application, IRecipient<SwitchWindowModeMessage>
             await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
         }
 
+        // Apply saved theme (default App.xaml loads Dark, switch if config says Light)
+        if (_config.Theme == "Light")
+        {
+            SettingsViewModel.ApplyTheme("Light");
+        }
+
         // Register for window mode switch messages
         WeakReferenceMessenger.Default.Register(this);
+
+        // Eagerly resolve singleton ViewModels so they start listening for messages immediately
+        _ = _host.Services.GetRequiredService<MiniViewModel>();
 
         // Create tray icon
         SetupTrayIcon();
@@ -181,13 +190,12 @@ public partial class App : Application, IRecipient<SwitchWindowModeMessage>
 
     private void ShowMiniWindow()
     {
-        _mainWindow?.Hide();
-
         if (_miniWindow == null || !_miniWindow.IsLoaded)
         {
             _miniWindow = _host!.Services.GetRequiredService<MiniWindow>();
         }
 
+        _mainWindow?.Hide();
         _miniWindow.Show();
         _miniWindow.Activate();
     }

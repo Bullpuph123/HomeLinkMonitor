@@ -53,8 +53,9 @@ public class WifiMetricsProvider : IWifiMetricsProvider
             if (currentBss != null)
             {
                 snapshot.Bssid = currentBss.Bssid.ToString();
-                snapshot.SignalQuality = currentBss.SignalStrength;
-                snapshot.RssiDbm = NetworkHelper.SignalQualityToRssi(currentBss.SignalStrength);
+                // BssNetworkPack.SignalStrength is RSSI in dBm (negative value)
+                snapshot.RssiDbm = currentBss.SignalStrength;
+                snapshot.SignalQuality = NetworkHelper.RssiToSignalQuality(currentBss.SignalStrength);
                 snapshot.LinkSpeedMbps = (int)(currentBss.LinkQuality);
                 snapshot.Channel = NetworkHelper.FrequencyToChannel(currentBss.Frequency);
                 snapshot.FrequencyGHz = currentBss.Frequency / 1_000_000.0;

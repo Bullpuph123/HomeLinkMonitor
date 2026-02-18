@@ -22,6 +22,8 @@ public class HttpProbe : IHttpProbe
     {
         _logger = logger;
         _httpClient = httpClient;
+        // Disable HttpClient's built-in timeout; we use per-request CancellationTokenSource instead
+        _httpClient.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
     }
 
     public async Task<HttpProbeResult> CheckAsync(AppConfig config, CancellationToken ct = default)
@@ -33,10 +35,13 @@ public class HttpProbe : IHttpProbe
 
         try
         {
-            _httpClient.Timeout = TimeSpan.FromMilliseconds(config.HttpTimeoutMs);
+            // Use per-request CancellationTokenSource for timeout instead of
+            // setting _httpClient.Timeout, which throws after the first request.
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(config.HttpTimeoutMs));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
             var sw = Stopwatch.StartNew();
-            var response = await _httpClient.GetAsync(config.HttpProbeUrl, ct);
+            var response = await _httpClient.GetAsync(config.HttpProbeUrl, linkedCts.Token);
             sw.Stop();
 
             result.LatencyMs = sw.Elapsed.TotalMilliseconds;
@@ -57,6 +62,11 @@ public class HttpProbe : IHttpProbe
             }
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            result.IsSuccess = false;
+            result.Error = "Timeout";
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             result.IsSuccess = false;
             result.Error = "Timeout";

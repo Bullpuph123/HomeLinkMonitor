@@ -56,6 +56,15 @@ public static class NetworkHelper
         return "Unknown";
     }
 
+    public static int RssiToSignalQuality(int rssiDbm)
+    {
+        // Convert RSSI (dBm) to quality percentage (0-100)
+        // -50 dBm or better = 100%, -100 dBm or worse = 0%
+        if (rssiDbm >= -50) return 100;
+        if (rssiDbm <= -100) return 0;
+        return 2 * (rssiDbm + 100);
+    }
+
     public static int SignalQualityToRssi(int quality)
     {
         // Windows signal quality is 0-100, roughly maps to -100 to -50 dBm

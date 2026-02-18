@@ -10,6 +10,7 @@
         Title="HomeLink Monitor"
         Height="700" Width="1100"
         MinHeight="500" MinWidth="800"
+        Icon="Assets/app.ico"
         Background="{DynamicResource BackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}"
         WindowStartupLocation="CenterScreen">

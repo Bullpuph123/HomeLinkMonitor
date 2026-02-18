@@ -60,15 +60,22 @@ public class MonitoringOrchestrator : BackgroundService
             {
                 var snapshot = await CollectSnapshotAsync(stoppingToken);
 
+                // Publish to UI first so dashboard always updates
+                _messenger.Send(new MonitoringUpdateMessage(snapshot));
+
                 // Persist to database
                 await _repository.SaveSnapshotAsync(snapshot, stoppingToken);
 
-                // Evaluate alerts and roaming
-                await _alertEngine.EvaluateAsync(snapshot, stoppingToken);
-                await _roamingDetector.CheckForRoamingAsync(snapshot.Wifi, stoppingToken);
-
-                // Publish to UI
-                _messenger.Send(new MonitoringUpdateMessage(snapshot));
+                // Evaluate alerts and roaming (non-critical for UI updates)
+                try
+                {
+                    await _alertEngine.EvaluateAsync(snapshot, stoppingToken);
+                    await _roamingDetector.CheckForRoamingAsync(snapshot.Wifi, stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Alert/roaming evaluation failed");
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

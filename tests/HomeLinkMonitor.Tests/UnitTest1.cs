@@ -40,6 +40,18 @@ public class NetworkHelperTests
     }
 
     [Theory]
+    [InlineData(-32, 100)]   // Very strong signal, caps at 100
+    [InlineData(-50, 100)]   // -50 dBm = 100%
+    [InlineData(-75, 50)]    // Mid-range
+    [InlineData(-100, 0)]    // -100 dBm = 0%
+    [InlineData(-110, 0)]    // Below floor, caps at 0
+    public void RssiToSignalQuality_ReturnsCorrectValue(int rssi, int expectedQuality)
+    {
+        var quality = NetworkHelper.RssiToSignalQuality(rssi);
+        Assert.Equal(expectedQuality, quality);
+    }
+
+    [Theory]
     [InlineData(90, NetworkHelper.ConnectionQuality.Excellent)]
     [InlineData(70, NetworkHelper.ConnectionQuality.Good)]
     [InlineData(50, NetworkHelper.ConnectionQuality.Fair)]
