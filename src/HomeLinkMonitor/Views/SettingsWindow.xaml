@@ -139,6 +139,8 @@
                                HorizontalAlignment="Center" Margin="0,4,0,16" />
                     <TextBlock Text="Wi-Fi Link Health &amp; Internet Connectivity Monitor"
                                Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="by Geoff Huber" FontSize="13"
+                               Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,12,0,0" />
                     <TextBlock Text=".NET 8.0 + WPF" FontSize="11"
                                Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,8,0,0" />
                 </StackPanel>
