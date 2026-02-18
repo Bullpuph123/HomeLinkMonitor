@@ -20,6 +20,7 @@ public partial class MainWindow : Window
         _config = config;
 
         SettingsButton.Click += SettingsButton_Click;
+        TracerouteButton.Click += TracerouteButton_Click;
 
         // Restore window position
         if (!double.IsNaN(config.MainWindowLeft) && !double.IsNaN(config.MainWindowTop))
@@ -46,6 +47,13 @@ public partial class MainWindow : Window
         var settingsWindow = _services.GetRequiredService<SettingsWindow>();
         settingsWindow.Owner = this;
         settingsWindow.ShowDialog();
+    }
+
+    private void TracerouteButton_Click(object sender, RoutedEventArgs e)
+    {
+        var tracerouteWindow = _services.GetRequiredService<TracerouteWindow>();
+        tracerouteWindow.Owner = this;
+        tracerouteWindow.ShowDialog();
     }
 
     protected override void OnLocationChanged(EventArgs e)

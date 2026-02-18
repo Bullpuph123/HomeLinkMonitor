@@ -53,6 +53,9 @@
 
                 <!-- Toolbar buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Traceroute" Style="{DynamicResource SubtleButton}"
+                            x:Name="TracerouteButton"
+                            ToolTip="Run a traceroute" Margin="4,0" />
                     <Button Content="Mini" Style="{DynamicResource SubtleButton}"
                             Command="{Binding SwitchToMiniModeCommand}"
                             ToolTip="Switch to compact mode" Margin="4,0" />

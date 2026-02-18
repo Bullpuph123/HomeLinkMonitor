@@ -80,11 +80,13 @@ public partial class App : Application, IRecipient<SwitchWindowModeMessage>
                 services.AddSingleton<MiniViewModel>();
                 services.AddSingleton<TrayViewModel>();
                 services.AddTransient<SettingsViewModel>();
+                services.AddTransient<TracerouteViewModel>();
 
                 // Windows
                 services.AddTransient<MainWindow>();
                 services.AddTransient<MiniWindow>();
                 services.AddTransient<SettingsWindow>();
+                services.AddTransient<TracerouteWindow>();
             })
             .Build();
 
@@ -121,34 +123,20 @@ public partial class App : Application, IRecipient<SwitchWindowModeMessage>
 
     private void SetupTrayIcon()
     {
+        var iconStream = GetResourceStream(new Uri("pack://application:,,,/Assets/app.ico"))?.Stream;
+        var icon = iconStream != null
+            ? new System.Drawing.Icon(iconStream)
+            : System.Drawing.SystemIcons.Application;
+
         _trayIcon = new H.NotifyIcon.TaskbarIcon
         {
             ToolTipText = "HomeLink Monitor",
+            Icon = icon,
             ContextMenu = CreateTrayContextMenu()
         };
 
         _trayIcon.TrayMouseDoubleClick += (_, _) => ShowMainWindow();
-
-        // Create a simple icon programmatically
-        _trayIcon.Icon = CreateTrayIconFromDrawing();
-    }
-
-    private static System.Drawing.Icon CreateTrayIconFromDrawing()
-    {
-        using var bmp = new System.Drawing.Bitmap(16, 16);
-        using var g = System.Drawing.Graphics.FromImage(bmp);
-        g.Clear(System.Drawing.Color.Transparent);
-
-        // Draw a simple Wi-Fi-like icon (green circle with signal arcs)
-        using var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(0x66, 0xBB, 0x6A));
-        g.FillEllipse(brush, 2, 2, 12, 12);
-
-        using var pen = new System.Drawing.Pen(System.Drawing.Color.White, 1);
-        g.DrawArc(pen, 4, 4, 8, 8, 220, 100);
-        g.DrawArc(pen, 5, 6, 6, 5, 220, 100);
-
-        var handle = bmp.GetHicon();
-        return System.Drawing.Icon.FromHandle(handle);
+        _trayIcon.ForceCreate();
     }
 
     private System.Windows.Controls.ContextMenu CreateTrayContextMenu()
