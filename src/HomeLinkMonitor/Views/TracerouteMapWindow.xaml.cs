@@ -197,6 +197,7 @@ public partial class TracerouteMapWindow : Window
         popupAnchor: [0, -16]
     }});
     var m = L.marker([{lat}, {lon}], {{icon: icon}}).addTo(map);
+    m.bindTooltip('<div class=""hop-tooltip""><b>Hop {hl.Hop.Hop}</b><br>{address}<br>{hostname}</div>', {{className: 'hop-tip', direction: 'top', offset: [0, -14]}});
     m.bindPopup('<div class=""hop-popup"">' +
         '<b>Hop {hl.Hop.Hop}</b><br>' +
         'IP: {address}<br>' +
@@ -245,6 +246,14 @@ public partial class TracerouteMapWindow : Window
     .leaflet-popup-tip {{ background: {popupBg} !important; }}
     .hop-popup {{ font-family: 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.5; }}
     .hop-popup b {{ color: {markerBg}; }}
+    .hop-tip .leaflet-tooltip {{
+        background: {popupBg}; color: {textColor};
+        border: 1px solid {popupBorder}; border-radius: 6px;
+        font-family: 'Segoe UI', sans-serif; font-size: 12px;
+        padding: 6px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }}
+    .hop-tip .leaflet-tooltip-top:before {{ border-top-color: {popupBorder}; }}
+    .hop-tooltip b {{ color: {markerBg}; }}
 </style>
 </head>
 <body>
