@@ -12,14 +12,15 @@ A real-time Wi-Fi link health and internet connectivity monitor for Windows. Bui
 - **DNS probe** - Per-server DNS query timing
 - **HTTP probe** - Internet reachability and captive portal detection
 - **Packet loss tracking** - Running totals with percentage display
-- **Mini mode** - Compact always-on-top window showing key metrics at a glance
+- **Mini mode** - Compact always-on-top window showing key metrics at a glance, with a live latency sparkline
 - **System tray** - Minimize to tray with context menu, double-click to restore
 - **Alerts** - Configurable thresholds for signal, latency, and packet loss with Windows toast notifications
 - **Roaming detection** - Tracks BSSID changes as you move between access points
 - **Dark & Light themes** - Full theme support with runtime switching
 - **SQLite persistence** - All metrics stored locally with configurable retention (raw: 7 days, aggregated: 90 days, alerts: 365 days)
 - **Data export** - CSV and JSON export of chart data and alert history
-- **Traceroute** - On-demand async traceroute with progressive display
+- **Traceroute** - On-demand async traceroute with progressive display and interactive map visualization
+- **Traceroute map** - Leaflet.js map with hostname-based geolocation, hop markers with IP/hostname tooltips, and route path lines (WebView2)
 
 ## Screenshots
 
@@ -109,6 +110,7 @@ All probes run in parallel each cycle. ViewModels subscribe to typed messages an
 | Wi-Fi API | ManagedNativeWifi |
 | System Tray | H.NotifyIcon.Wpf |
 | Notifications | Microsoft.Toolkit.Uwp.Notifications |
+| Traceroute Map | Microsoft.Web.WebView2 + Leaflet.js |
 | DNS Queries | DnsClient |
 
 ## Keyboard Shortcuts
