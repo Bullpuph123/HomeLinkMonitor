@@ -40,7 +40,7 @@ public static class HostnameGeoParser
             if (stateSeg.Length != 2 || !UsStates.Contains(stateSeg))
                 continue;
 
-            var citySeg = StripTrailingDigits(segments[i]);
+            var citySeg = StripSurroundingDigits(segments[i]);
             if (citySeg.Length < 3 || !citySeg.All(char.IsLetter))
                 continue;
 
@@ -51,7 +51,7 @@ public static class HostnameGeoParser
             // Join with previous segment for compound names: "great"+"oaks" + "ca"
             if (i > 0)
             {
-                var prevSeg = StripTrailingDigits(segments[i - 1]);
+                var prevSeg = StripSurroundingDigits(segments[i - 1]);
                 if (prevSeg.Length >= 2 && prevSeg.All(char.IsLetter))
                 {
                     var joined = prevSeg + citySeg;
@@ -62,10 +62,10 @@ public static class HostnameGeoParser
                 // Join 3 segments: "san"+"luis"+"obispo" + "ca"
                 if (i > 1)
                 {
-                    var prev2 = StripTrailingDigits(segments[i - 2]);
+                    var prev2 = StripSurroundingDigits(segments[i - 2]);
                     if (prev2.Length >= 2 && prev2.All(char.IsLetter))
                     {
-                        var joined3 = prev2 + StripTrailingDigits(segments[i - 1]) + citySeg;
+                        var joined3 = prev2 + StripSurroundingDigits(segments[i - 1]) + citySeg;
                         if (UsCities.TryGetValue((joined3, stateSeg), out var j3loc))
                             return new ParsedLocation(j3loc.Name, stateSeg.ToUpperInvariant(), "United States", j3loc.Lat, j3loc.Lon);
                     }
@@ -76,7 +76,7 @@ public static class HostnameGeoParser
         // Pass 3: Standalone city names (Level3 style: "Dallas1", "SanJose1")
         foreach (var seg in segments)
         {
-            var stripped = StripTrailingDigits(seg);
+            var stripped = StripSurroundingDigits(seg);
             if (stripped.Length < 4) continue;
 
             foreach (var (name, loc) in StandaloneCityNames)
@@ -102,12 +102,15 @@ public static class HostnameGeoParser
         return null;
     }
 
-    private static string StripTrailingDigits(string s)
+    private static string StripSurroundingDigits(string s)
     {
+        int start = 0;
+        while (start < s.Length && char.IsDigit(s[start]))
+            start++;
         int end = s.Length;
-        while (end > 0 && char.IsDigit(s[end - 1]))
+        while (end > start && char.IsDigit(s[end - 1]))
             end--;
-        return s[..end];
+        return s[start..end];
     }
 
     // -----------------------------------------------------------------------
