@@ -68,6 +68,7 @@ public partial class App : Application, IRecipient<SwitchWindowModeMessage>
                 services.AddSingleton<IAlertEngine, AlertEngine>();
                 services.AddSingleton<IRoamingDetector, RoamingDetector>();
                 services.AddSingleton<ITracerouteService, TracerouteService>();
+                services.AddSingleton<IGeoIpService, GeoIpService>();
                 services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<INotificationService, NotificationService>();
 
