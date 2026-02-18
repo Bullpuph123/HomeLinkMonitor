@@ -84,6 +84,41 @@ public partial class TracerouteMapWindow : Window
                 }
             }
 
+            // Infer location for early hops that only have ip-api.com data:
+            // ISP infrastructure IPs are often registered to HQ, not the router's
+            // physical location. Early hops (1-5) are almost always in the user's
+            // local area, so use the nearest hostname-located hop's position.
+            for (int i = 0; i < locatedHops.Count; i++)
+            {
+                if (locatedHops[i].Source != "geoip") continue;
+
+                var hopNum = locatedHops[i].Hop.Hop;
+                if (hopNum > 5) continue;
+
+                HopLocation? nearest = null;
+                int minDist = int.MaxValue;
+                foreach (var hl in locatedHops)
+                {
+                    if (hl.Source != "hostname") continue;
+                    var dist = Math.Abs(hl.Hop.Hop - hopNum);
+                    if (dist < minDist && dist <= 3)
+                    {
+                        minDist = dist;
+                        nearest = hl;
+                    }
+                }
+
+                if (nearest != null)
+                {
+                    locatedHops[i] = locatedHops[i] with
+                    {
+                        Lat = nearest.Lat, Lon = nearest.Lon,
+                        City = nearest.City, Country = nearest.Country,
+                        Source = "inferred"
+                    };
+                }
+            }
+
             if (locatedHops.Count == 0)
             {
                 MapWebView.NavigateToString(GenerateEmptyHtml());

@@ -630,6 +630,8 @@ public static class HostnameGeoParser
         ("sacramento", new("Sacramento", "CA", "United States", 38.582, -121.494)),
         ("washington", new("Washington", "DC", "United States", 38.907, -77.037)),
         // Single-word (unambiguous major cities)
+        ("greatoaks", new("Great Oaks", "CA", "United States", 37.238, -121.778)),
+        ("greakoaks", new("Great Oaks", "CA", "United States", 37.238, -121.778)),
         ("atlanta", new("Atlanta", "GA", "United States", 33.749, -84.388)),
         ("chicago", new("Chicago", "IL", "United States", 41.878, -87.630)),
         ("dallas", new("Dallas", "TX", "United States", 32.777, -96.797)),
