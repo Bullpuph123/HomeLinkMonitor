@@ -35,3 +35,9 @@ desktop.ini
 
 ## User config
 config.json
+
+## Test/dev scripts and screenshots
+*.ps1
+*.png
+icon_preview.png
+screenshot*.png
