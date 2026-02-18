@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Windows;
 using HomeLinkMonitor.Models;
@@ -11,6 +13,7 @@ public partial class TracerouteMapWindow : Window
     private readonly string _target;
     private readonly IGeoIpService _geoIpService;
     private readonly AppConfig _config;
+    private string? _tempHtmlPath;
 
     public TracerouteMapWindow(
         IReadOnlyList<TracerouteHop> hops,
@@ -30,6 +33,11 @@ public partial class TracerouteMapWindow : Window
         Loaded += OnLoaded;
     }
 
+    private record HopLocation(
+        TracerouteHop Hop,
+        double Lat, double Lon,
+        string City, string Country, string Isp, string Source);
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         try
@@ -45,22 +53,47 @@ public partial class TracerouteMapWindow : Window
                 .Where(r => r.Status == "success" && r.Lat.HasValue && r.Lon.HasValue)
                 .ToDictionary(r => r.Query, r => r);
 
-            var locatedHops = _hops
-                .Where(h => geoLookup.ContainsKey(h.Address))
-                .Select(h => (Hop: h, Geo: geoLookup[h.Address]))
-                .ToList();
+            // Build locations: prefer hostname-parsed coords, fall back to ip-api.com
+            var locatedHops = new List<HopLocation>();
+            int hostnameCount = 0;
+
+            foreach (var hop in _hops)
+            {
+                var parsed = HostnameGeoParser.TryParse(hop.HostName);
+                var hasGeo = geoLookup.TryGetValue(hop.Address, out var geo);
+
+                if (parsed != null)
+                {
+                    var isp = hasGeo ? geo!.Isp ?? "Unknown" : "Unknown";
+                    var city = string.IsNullOrEmpty(parsed.Region)
+                        ? parsed.City
+                        : $"{parsed.City}, {parsed.Region}";
+                    locatedHops.Add(new HopLocation(
+                        hop, parsed.Lat, parsed.Lon,
+                        city, parsed.Country, isp, "hostname"));
+                    hostnameCount++;
+                }
+                else if (hasGeo)
+                {
+                    var city = geo!.City ?? "Unknown";
+                    if (!string.IsNullOrEmpty(geo.RegionName))
+                        city += $", {geo.RegionName}";
+                    locatedHops.Add(new HopLocation(
+                        hop, geo.Lat!.Value, geo.Lon!.Value,
+                        city, geo.Country ?? "Unknown", geo.Isp ?? "Unknown", "geoip"));
+                }
+            }
 
             if (locatedHops.Count == 0)
             {
-                var html = GenerateEmptyHtml();
-                MapWebView.NavigateToString(html);
+                MapWebView.NavigateToString(GenerateEmptyHtml());
                 StatusText.Text = "No geolocatable hops found (all addresses are private/local)";
                 return;
             }
 
             var mapHtml = GenerateMapHtml(locatedHops);
-            MapWebView.NavigateToString(mapHtml);
-            StatusText.Text = $"Showing {locatedHops.Count} of {_hops.Count} hops on map";
+            NavigateToTempFile(mapHtml);
+            StatusText.Text = $"Showing {locatedHops.Count} of {_hops.Count} hops on map ({hostnameCount} from hostname)";
         }
         catch (Exception ex)
         {
@@ -68,15 +101,32 @@ public partial class TracerouteMapWindow : Window
         }
     }
 
-    private string GenerateMapHtml(List<(TracerouteHop Hop, GeoIpResult Geo)> locatedHops)
+    private void NavigateToTempFile(string html)
+    {
+        _tempHtmlPath = Path.Combine(Path.GetTempPath(), $"homelink_map_{Guid.NewGuid():N}.html");
+        File.WriteAllText(_tempHtmlPath, html, Encoding.UTF8);
+        MapWebView.CoreWebView2.Navigate(new Uri(_tempHtmlPath).AbsoluteUri);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        MapWebView.Dispose();
+        if (_tempHtmlPath != null)
+        {
+            try { File.Delete(_tempHtmlPath); } catch { }
+        }
+        base.OnClosed(e);
+    }
+
+    private string GenerateMapHtml(List<HopLocation> locatedHops)
     {
         bool isDark = _config.Theme == "Dark";
         var tileUrl = isDark
             ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
         var tileAttrib = isDark
-            ? "&copy; <a href='https://www.openstreetmap.org/copyright'>OSM</a> &copy; <a href='https://carto.com/'>CARTO</a>"
-            : "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>";
+            ? "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OSM</a> &copy; <a href=\"https://carto.com/\">CARTO</a>"
+            : "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>";
 
         var bgColor = isDark ? "#1a1a2e" : "#ffffff";
         var textColor = isDark ? "#e0e0e0" : "#333333";
@@ -86,33 +136,34 @@ public partial class TracerouteMapWindow : Window
         var markerBg = isDark ? "#00d4ff" : "#0066cc";
         var markerText = isDark ? "#1a1a2e" : "#ffffff";
 
+        var inv = CultureInfo.InvariantCulture;
         var sb = new StringBuilder();
 
         // Build markers JS
         sb.Append("var markers = [];\n");
-        foreach (var (hop, geo) in locatedHops)
+        foreach (var hl in locatedHops)
         {
-            var lat = geo.Lat!.Value;
-            var lon = geo.Lon!.Value;
-            var latency = hop.LatencyMs.HasValue ? $"{hop.LatencyMs.Value:F1} ms" : "N/A";
-            var city = EscapeJs(geo.City ?? "Unknown");
-            var country = EscapeJs(geo.Country ?? "Unknown");
-            var isp = EscapeJs(geo.Isp ?? "Unknown");
-            var address = EscapeJs(hop.Address);
-            var hostname = EscapeJs(hop.HostName);
+            var lat = hl.Lat.ToString(inv);
+            var lon = hl.Lon.ToString(inv);
+            var latency = hl.Hop.LatencyMs.HasValue ? $"{hl.Hop.LatencyMs.Value:F1} ms" : "N/A";
+            var city = EscapeJs(hl.City);
+            var country = EscapeJs(hl.Country);
+            var isp = EscapeJs(hl.Isp);
+            var address = EscapeJs(hl.Hop.Address);
+            var hostname = EscapeJs(hl.Hop.HostName);
 
             sb.Append($@"
 (function() {{
     var icon = L.divIcon({{
         className: 'hop-marker',
-        html: '<div class=""hop-circle"">{hop.Hop}</div>',
+        html: '<div class=""hop-circle"">{hl.Hop.Hop}</div>',
         iconSize: [28, 28],
         iconAnchor: [14, 14],
         popupAnchor: [0, -16]
     }});
     var m = L.marker([{lat}, {lon}], {{icon: icon}}).addTo(map);
     m.bindPopup('<div class=""hop-popup"">' +
-        '<b>Hop {hop.Hop}</b><br>' +
+        '<b>Hop {hl.Hop.Hop}</b><br>' +
         'IP: {address}<br>' +
         'Host: {hostname}<br>' +
         'Latency: {latency}<br>' +
@@ -125,7 +176,8 @@ public partial class TracerouteMapWindow : Window
         }
 
         // Build polyline coords
-        var coords = string.Join(",", locatedHops.Select(h => $"[{h.Geo.Lat!.Value},{h.Geo.Lon!.Value}]"));
+        var coords = string.Join(",", locatedHops.Select(h =>
+            $"[{h.Lat.ToString(inv)},{h.Lon.ToString(inv)}]"));
 
         var html = $@"<!DOCTYPE html>
 <html>
