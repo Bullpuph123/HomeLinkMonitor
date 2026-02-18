@@ -42,5 +42,6 @@ publish/
 ## Test/dev scripts and screenshots
 *.ps1
 *.png
+!docs/images/*.png
 icon_preview.png
 screenshot*.png
