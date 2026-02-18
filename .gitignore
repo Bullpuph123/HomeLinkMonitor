@@ -36,6 +36,9 @@ desktop.ini
 ## User config
 config.json
 
+## Publish output
+publish/
+
 ## Test/dev scripts and screenshots
 *.ps1
 *.png
